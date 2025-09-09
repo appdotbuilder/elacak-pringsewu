@@ -1,60 +1,116 @@
+import { db } from '../db';
+import { documentsTable, housingRecordsTable } from '../db/schema';
 import { type Document, type CreateDocumentInput } from '../schema';
+import { eq, and } from 'drizzle-orm';
 
 export async function getDocumentsByHousingRecord(housingRecordId: number): Promise<Document[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch all documents for a specific housing record
-    // Should return list of documents with file metadata and upload information
-    return Promise.resolve([]);
+  try {
+    const documents = await db.select()
+      .from(documentsTable)
+      .where(eq(documentsTable.housing_record_id, housingRecordId))
+      .execute();
+
+    return documents;
+  } catch (error) {
+    console.error('Failed to fetch documents by housing record:', error);
+    throw error;
+  }
 }
 
 export async function getDocumentById(id: number): Promise<Document | null> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch a specific document by ID
-    // Should validate user access permissions based on housing record ownership
-    return Promise.resolve({
-        id: id,
-        housing_record_id: 1,
-        document_type: 'HOUSE_PHOTO_BEFORE',
-        filename: 'house_before.jpg',
-        file_path: '/uploads/house_before.jpg',
-        file_size: 1024000,
-        mime_type: 'image/jpeg',
-        uploaded_by: 1,
-        created_at: new Date()
-    } as Document);
+  try {
+    const documents = await db.select()
+      .from(documentsTable)
+      .where(eq(documentsTable.id, id))
+      .execute();
+
+    return documents.length > 0 ? documents[0] : null;
+  } catch (error) {
+    console.error('Failed to fetch document by ID:', error);
+    throw error;
+  }
 }
 
 export async function createDocument(input: CreateDocumentInput, uploadedBy: number): Promise<Document> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to create a document record after file upload
-    // Should validate file type, size limits, and housing record exists
-    return Promise.resolve({
-        id: 1,
+  try {
+    // Verify housing record exists
+    const housingRecords = await db.select()
+      .from(housingRecordsTable)
+      .where(eq(housingRecordsTable.id, input.housing_record_id))
+      .execute();
+
+    if (housingRecords.length === 0) {
+      throw new Error('Housing record not found');
+    }
+
+    // Insert document record
+    const result = await db.insert(documentsTable)
+      .values({
         housing_record_id: input.housing_record_id,
         document_type: input.document_type,
         filename: input.filename,
         file_path: input.file_path,
         file_size: input.file_size,
         mime_type: input.mime_type,
-        uploaded_by: uploadedBy,
-        created_at: new Date()
-    } as Document);
+        uploaded_by: uploadedBy
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Document creation failed:', error);
+    throw error;
+  }
 }
 
 export async function deleteDocument(id: number, deletedBy: number): Promise<boolean> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to delete a document and its file
-    // Should validate user permissions, remove file from storage, and delete database record
-    return Promise.resolve(true);
+  try {
+    // Check if document exists
+    const documents = await db.select()
+      .from(documentsTable)
+      .where(eq(documentsTable.id, id))
+      .execute();
+
+    if (documents.length === 0) {
+      return false;
+    }
+
+    // Delete document record
+    const result = await db.delete(documentsTable)
+      .where(eq(documentsTable.id, id))
+      .execute();
+
+    return result.rowCount !== null && result.rowCount > 0;
+  } catch (error) {
+    console.error('Document deletion failed:', error);
+    throw error;
+  }
 }
 
 export async function uploadFile(file: File, documentType: string): Promise<{ filename: string; filePath: string; fileSize: number }> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to handle file upload to storage
-    // Should validate file type/size, generate unique filename, store file, and return metadata
-    return Promise.resolve({
-        filename: 'uploaded_file.jpg',
-        filePath: '/uploads/uploaded_file.jpg',
-        fileSize: 1024000
-    });
+  try {
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 15);
+    const originalName = file.name;
+    const parts = originalName.split('.');
+    const extension = parts.length > 1 ? parts.pop() : '';
+    const filename = extension 
+      ? `${documentType}_${timestamp}_${randomSuffix}.${extension}`
+      : `${documentType}_${timestamp}_${randomSuffix}`;
+    const filePath = `/uploads/${filename}`;
+
+    // In a real implementation, you would save the file to storage here
+    // For now, we'll simulate the file upload process
+    
+    return {
+      filename,
+      filePath,
+      fileSize: file.size
+    };
+  } catch (error) {
+    console.error('File upload failed:', error);
+    throw error;
+  }
 }

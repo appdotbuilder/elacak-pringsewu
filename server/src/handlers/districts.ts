@@ -1,34 +1,49 @@
+import { db } from '../db';
+import { districtsTable } from '../db/schema';
 import { type District, type CreateDistrictInput } from '../schema';
+import { eq, asc } from 'drizzle-orm';
 
 export async function getDistricts(): Promise<District[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch all districts from the database
-    // Should return list of districts ordered by name
-    return Promise.resolve([]);
+  try {
+    const results = await db.select()
+      .from(districtsTable)
+      .orderBy(asc(districtsTable.name))
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch districts:', error);
+    throw error;
+  }
 }
 
 export async function getDistrictById(id: number): Promise<District | null> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch a specific district by ID
-    // Should return district details or null if not found
-    return Promise.resolve({
-        id: id,
-        name: 'Sample District',
-        code: 'DIST001',
-        created_at: new Date(),
-        updated_at: new Date()
-    } as District);
+  try {
+    const results = await db.select()
+      .from(districtsTable)
+      .where(eq(districtsTable.id, id))
+      .execute();
+
+    return results.length > 0 ? results[0] : null;
+  } catch (error) {
+    console.error('Failed to fetch district by ID:', error);
+    throw error;
+  }
 }
 
 export async function createDistrict(input: CreateDistrictInput): Promise<District> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to create a new district
-    // Should validate unique code and name, then persist to database
-    return Promise.resolve({
-        id: 1,
+  try {
+    const result = await db.insert(districtsTable)
+      .values({
         name: input.name,
-        code: input.code,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as District);
+        code: input.code
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('District creation failed:', error);
+    throw error;
+  }
 }

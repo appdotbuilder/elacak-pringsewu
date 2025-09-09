@@ -1,43 +1,74 @@
+import { db } from '../db';
+import { villagesTable, districtsTable } from '../db/schema';
 import { type Village, type CreateVillageInput } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function getVillages(): Promise<Village[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch all villages from the database
-    // Should return list of villages with district information
-    return Promise.resolve([]);
+  try {
+    const result = await db.select()
+      .from(villagesTable)
+      .execute();
+
+    return result;
+  } catch (error) {
+    console.error('Failed to fetch villages:', error);
+    throw error;
+  }
 }
 
 export async function getVillagesByDistrict(districtId: number): Promise<Village[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch villages by district ID
-    // Should return filtered villages for a specific district
-    return Promise.resolve([]);
+  try {
+    const result = await db.select()
+      .from(villagesTable)
+      .where(eq(villagesTable.district_id, districtId))
+      .execute();
+
+    return result;
+  } catch (error) {
+    console.error('Failed to fetch villages by district:', error);
+    throw error;
+  }
 }
 
 export async function getVillageById(id: number): Promise<Village | null> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch a specific village by ID
-    // Should return village details with district info or null if not found
-    return Promise.resolve({
-        id: id,
-        name: 'Sample Village',
-        code: 'VILL001',
-        district_id: 1,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as Village);
+  try {
+    const result = await db.select()
+      .from(villagesTable)
+      .where(eq(villagesTable.id, id))
+      .execute();
+
+    return result[0] || null;
+  } catch (error) {
+    console.error('Failed to fetch village by ID:', error);
+    throw error;
+  }
 }
 
 export async function createVillage(input: CreateVillageInput): Promise<Village> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to create a new village
-    // Should validate district exists and unique code per district, then persist to database
-    return Promise.resolve({
-        id: 1,
+  try {
+    // Verify district exists
+    const district = await db.select()
+      .from(districtsTable)
+      .where(eq(districtsTable.id, input.district_id))
+      .execute();
+
+    if (district.length === 0) {
+      throw new Error(`District with ID ${input.district_id} not found`);
+    }
+
+    // Insert village record
+    const result = await db.insert(villagesTable)
+      .values({
         name: input.name,
         code: input.code,
-        district_id: input.district_id,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as Village);
+        district_id: input.district_id
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Village creation failed:', error);
+    throw error;
+  }
 }
